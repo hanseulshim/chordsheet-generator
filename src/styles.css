@@ -345,3 +345,21 @@ a {
     color: var(--foreground);
   }
 }
+
+@media print {
+  @page { margin: 0; }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .print-viewer {
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+}
