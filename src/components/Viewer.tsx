@@ -92,17 +92,17 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
           
           const isIntro = pureLine.match(/^intro/i)
           const isFirstBlock = blocks.length === 0
-          const bumpTop = (isIntro || isFirstBlock) ? 0 : 16 // mt-4 = 16px
+          const bumpTop = (isIntro || isFirstBlock) ? 0 : 12 // mt-3 = 12px
           currentPixelHeight += fontSize * 1.5 + bumpTop
           
           currentBlock.push(
-            <h3 key={lineIndex} className={`${(isIntro || isFirstBlock) ? 'mt-0' : 'mt-4'} font-bold text-slate-800 uppercase tracking-widest break-after-avoid`}>{pureLine}</h3>
+            <h3 key={lineIndex} className={`${(isIntro || isFirstBlock) ? 'mt-0' : 'mt-3'} font-bold text-slate-800 uppercase tracking-widest break-after-avoid`}>{pureLine}</h3>
           )
           return
         }
 
         if (!line.includes('[')) {
-          currentPixelHeight += 16 // min-h-[1rem] = 16px
+          currentPixelHeight += fontSize * 1.5
           currentBlock.push(<div key={lineIndex} className="min-h-[1rem]">{line}</div>)
           return
         }
@@ -114,7 +114,7 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
 
         // Ignore N.C. (No Chord), Lyrics mode
         if (isOnlyChords && (suppressChords || parts.every(p => !p.startsWith('[') || p.toUpperCase() === '[N.C.]' || p.toUpperCase() === '[NC]'))) return
-        currentPixelHeight += isOnlyChords ? (lineHeightTight + 8) : (lineHeightTight + 20)
+        currentPixelHeight += isOnlyChords ? (fontSize * 1.5 + 4) : (fontSize * 1.5 + 20)
         
         currentBlock.push(
           <div key={lineIndex} className={`relative flex whitespace-nowrap leading-tight ${isOnlyChords ? 'mt-1 mb-1' : 'mt-4'}`}>
@@ -134,8 +134,8 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
                   )
                 }
                 return (
-                  <span key={i} className="relative inline-block h-4 align-bottom">
-                    <span className="absolute -top-[1.2em] left-0 whitespace-nowrap font-bold text-indigo-600 print:text-black leading-none">
+                  <span key={i} className="relative inline-flex items-center w-0 h-[1em]">
+                    <span className="absolute -top-[1.1em] left-0 whitespace-nowrap font-bold text-indigo-600 print:text-black leading-none">
                       {chord}
                     </span>
                   </span>
@@ -160,8 +160,9 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
       blocks.forEach(block => {
         const isFirstPage = layoutPages.length === 0
         // Calculate max pixel height visually available for actual columns layout
-        // 1100 total - 56px (pt-4, pb-10) - 70px (title block) = ~974. Use 970 and 1040 buffer
-        const maxAvailable = isFirstPage ? 970 : 1040
+        // 1100 total - 56px (pt-4, pb-10) - ~90px (header + space) = 954. Use 940 for safety.
+        // Page 2+: 1100 - 56 = 1044. Use 1030 for safety.
+        const maxAvailable = isFirstPage ? 940 : 1030
 
         if (currentHeight + block.pixelHeight > maxAvailable && currentHeight > 0) {
           currentCol++
@@ -201,7 +202,7 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
             marginBottom: `calc(${(scale - 1) * 1100}px + 2.5rem)`,
             willChange: 'transform'
           }}
-          className={`print-page ${pageIndex < pages.length - 1 ? 'print:break-after-page' : ''} w-[850px] h-[1100px] shrink-0 bg-white px-6 pb-6 md:px-10 md:pb-10 pt-4 md:pt-6 shadow-lg ring-1 ring-slate-900/5 flex flex-col relative overflow-hidden`}
+          className={`print-page ${pageIndex < pages.length - 1 ? 'print:break-after-page' : ''} w-[850px] h-[1100px] shrink-0 bg-white px-4 pb-4 md:px-8 md:pb-8 pt-4 md:pt-6 shadow-lg ring-1 ring-slate-900/5 flex flex-col relative overflow-hidden`}
         >
           <div className="flex-1 flex flex-col space-y-4 font-mono tracking-tight leading-relaxed text-slate-800 print:text-black min-h-0" style={{ fontSize: `${fontSize}px` }}>
             {/* Header Block (Only rendered on the very first physical page) */}
@@ -226,7 +227,7 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
             )}
             
             {/* Content Block */}
-            <div className="flex-1 flex gap-12 text-left min-h-0 w-full h-full">
+            <div className="flex-1 flex gap-8 text-left min-h-0 w-full h-full">
               <div className="flex-1 flex flex-col min-h-0">{page[0]}</div>
               <div className="flex-1 flex flex-col min-h-0">{page[1]}</div>
             </div>

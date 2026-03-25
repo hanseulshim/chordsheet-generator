@@ -1,9 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Editor } from '../components/Editor'
 import { Viewer } from '../components/Viewer'
 import { extractMetadata, parseChordOverText, compactChordPro } from '../lib/parser'
+import { getLibrary, saveSong, deleteSong, type SavedSong } from '../lib/storage'
+import { Music, FolderOpen, Save, Trash2, Plus, X } from 'lucide-react'
 
 const searchSchema = z.object({
   key: z.string().optional().catch('C'),
@@ -37,13 +39,70 @@ function App() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   
+  const [currentId, setCurrentId] = useState<string | null>(null)
   const [text, setText] = useState(DEFAULT_CHORDPRO)
   const [title, setTitle] = useState('Amazing Grace')
   const [artist, setArtist] = useState('John Newton')
   const [originalKey, setOriginalKey] = useState('G')
-  const [tempo, setTempo] = useState('Slow')
+  const [tempo, setTempo] = useState('')
   const [scanOverride, setScanOverride] = useState('')
   const [fontSize, setFontSize] = useState(12)
+
+  const [library, setLibrary] = useState<SavedSong[]>([])
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false)
+  const [isSaved, setIsSaved] = useState(false)
+
+  useEffect(() => {
+    setLibrary(getLibrary())
+  }, [])
+
+  const handleSave = () => {
+    const id = saveSong({
+      title,
+      artist,
+      text,
+      originalKey,
+      tempo,
+      scan: scanOverride,
+    }, currentId || undefined)
+    
+    setCurrentId(id)
+    setLibrary(getLibrary())
+    
+    // Show confirmation
+    setIsSaved(true)
+    setTimeout(() => setIsSaved(false), 2000)
+  }
+
+  const handleNew = () => {
+    setCurrentId(null)
+    setTitle('Untitled Song')
+    setArtist('')
+    setOriginalKey('G')
+    setTempo('')
+    setText('')
+    setScanOverride('')
+  }
+
+  const handleLoad = (song: SavedSong) => {
+    setCurrentId(song.id)
+    setTitle(song.title)
+    setArtist(song.artist)
+    setOriginalKey(song.originalKey)
+    setTempo(song.tempo)
+    setText(song.text)
+    setScanOverride(song.scan || '')
+    setIsLibraryOpen(false)
+  }
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    if (confirm('Delete this song?')) {
+      deleteSong(id)
+      setLibrary(getLibrary())
+      if (currentId === id) handleNew()
+    }
+  }
 
   const handleRoadmapChange = (scan: string) => {
     // Only auto-populate if the user hasn't typed something custom
@@ -54,7 +113,6 @@ function App() {
     navigate({ search: { ...search, key: newKey } })
   }
 
-
   const handleStandardize = (input: string) => {
     const meta = extractMetadata(input)
     if (meta.title) setTitle(meta.title)
@@ -62,10 +120,7 @@ function App() {
     if (meta.key) setOriginalKey(meta.key)
     if (meta.tempo) setTempo(meta.tempo)
     
-    // Always reset scan first — manual value from metadata takes priority,
-    // otherwise leave blank so the Viewer's roadmap callback fills it in
     setScanOverride(meta.scan || '')
-    
     const parsed = parseChordOverText(meta.remainingText)
     setText(parsed)
   }
@@ -73,12 +128,89 @@ function App() {
   return (
     <main className="flex h-screen w-full flex-col overflow-hidden bg-slate-50 text-slate-800 print:h-auto print:overflow-visible print:block">
       
+      {/* Library Sidebar Overlay */}
+      {isLibraryOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/20 backdrop-blur-sm print:hidden"
+          onClick={() => setIsLibraryOpen(false)}
+        >
+          <div 
+            className="absolute right-0 top-0 h-full w-80 bg-white shadow-2xl flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Music className="w-5 h-5 text-indigo-600" /> My Library
+              </h2>
+              <button onClick={() => setIsLibraryOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              <button 
+                onClick={handleNew}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition-all font-semibold text-sm mb-4"
+              >
+                <Plus className="w-4 h-4" /> New Song
+              </button>
+              
+              {library.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 text-sm">
+                  No saved songs yet
+                </div>
+              ) : library.map(song => (
+                <div 
+                  key={song.id}
+                  onClick={() => handleLoad(song)}
+                  className={`group relative flex flex-col p-4 rounded-xl border transition-all cursor-pointer ${currentId === song.id ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200' : 'bg-white border-slate-100 hover:border-indigo-200 hover:shadow-sm'}`}
+                >
+                  <div className="font-bold text-slate-900 truncate pr-6">{song.title}</div>
+                  <div className="text-xs text-slate-500 mt-1">{song.artist || 'Unknown Artist'}</div>
+                  <button 
+                    onClick={(e) => handleDelete(e, song.id)}
+                    className="absolute top-4 right-4 p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Navigation / Toolbar (Hidden in print) */}
       <nav className="print:hidden flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 shadow-sm">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
-            CHORDSHEET <span className="text-indigo-600">PRO</span>
+            CHORDSHEET
           </h1>
+          
+          <div className="h-6 w-px bg-slate-200 mx-2" />
+          
+          <button 
+            onClick={handleSave}
+            disabled={isSaved}
+            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${isSaved ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:bg-slate-50'}`}
+          >
+            {isSaved ? (
+              <>
+                <Music className="w-4 h-4" /> SAVED!
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 text-indigo-500" /> SAVE
+              </>
+            )}
+          </button>
+          
+          <button 
+            onClick={() => setIsLibraryOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 rounded-md transition-colors"
+          >
+            <FolderOpen className="w-4 h-4 text-amber-500" /> LIBRARY
+          </button>
         </div>
 
         <div className="flex items-center gap-3">
