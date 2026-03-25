@@ -88,3 +88,20 @@ export function parseSectionsAndRoadmap(chordPro: string): { finalChordPro: stri
     roadmap
   }
 }
+
+export function abbreviateScanLabel(label: string): string {
+  const upper = label.toUpperCase().trim()
+  if (upper.startsWith('VERSE ')) return 'V' + upper.replace('VERSE ', '')
+  if (upper === 'VERSE') return 'V'
+  if (upper.startsWith('CHORUS')) return 'C' + upper.replace('CHORUS', '').trim()
+  if (upper.startsWith('PRE-CHORUS') || upper.startsWith('PRECHORUS')) return 'PC'
+  if (upper.startsWith('BRIDGE')) return 'B' + upper.replace('BRIDGE', '').trim()
+  if (upper.startsWith('INTRO')) return 'INTRO'
+  if (upper.startsWith('OUTRO')) return 'OUT'
+  if (upper.startsWith('INSTRUMENTAL')) return 'INST'
+  if (upper.startsWith('INTERLUDE')) return 'INT'
+  if (upper.startsWith('VAMP')) return 'VAMP'
+  if (upper.startsWith('TAG')) return 'TAG'
+  if (upper.startsWith('ENDING')) return 'END'
+  return upper
+}

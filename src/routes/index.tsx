@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { useState } from 'react'
 import { Editor } from '../components/Editor'
 import { Viewer } from '../components/Viewer'
-import { extractMetadata, parseChordOverText } from '../lib/parser'
+import { extractMetadata, parseChordOverText, compactChordPro } from '../lib/parser'
 
 const searchSchema = z.object({
   key: z.string().optional().catch('C'),
@@ -43,6 +43,12 @@ function App() {
   const [originalKey, setOriginalKey] = useState('G')
   const [tempo, setTempo] = useState('Slow')
   const [scanOverride, setScanOverride] = useState('')
+  const [fontSize, setFontSize] = useState(12)
+
+  const handleRoadmapChange = (scan: string) => {
+    // Only auto-populate if the user hasn't typed something custom
+    setScanOverride(prev => prev ? prev : scan)
+  }
 
   const setKey = (newKey: string) => {
     navigate({ search: { ...search, key: newKey } })
@@ -55,14 +61,17 @@ function App() {
     if (meta.artist) setArtist(meta.artist)
     if (meta.key) setOriginalKey(meta.key)
     if (meta.tempo) setTempo(meta.tempo)
-    if (meta.scan) setScanOverride(meta.scan)
+    
+    // Always reset scan first — manual value from metadata takes priority,
+    // otherwise leave blank so the Viewer's roadmap callback fills it in
+    setScanOverride(meta.scan || '')
     
     const parsed = parseChordOverText(meta.remainingText)
     setText(parsed)
   }
 
   return (
-    <main className="flex h-screen w-full flex-col overflow-hidden bg-slate-50 text-slate-800">
+    <main className="flex h-screen w-full flex-col overflow-hidden bg-slate-50 text-slate-800 print:h-auto print:overflow-visible print:block">
       
       {/* Top Navigation / Toolbar (Hidden in print) */}
       <nav className="print:hidden flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 shadow-sm">
@@ -106,6 +115,34 @@ function App() {
               Lyrics
             </button>
           </div>
+
+          {/* Compact Action Button */}
+          <button
+            onClick={() => setText(prev => compactChordPro(prev))}
+            className="ml-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md border border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-400 transition-all"
+            title="Remove duplicate sections (same chords + lyrics)"
+          >
+            Compact
+          </button>
+
+          {/* Font Resizer */}
+          <div className="flex bg-slate-100 p-1 rounded-lg ml-2 items-center gap-1">
+            <button 
+              onClick={() => setFontSize(f => Math.max(8, f - 1))}
+              className="px-2 py-1 text-[11px] font-extrabold text-slate-500 hover:text-slate-800 transition-colors"
+              title="Decrease Font Size"
+            >
+              A-
+            </button>
+            <span className="text-[10px] font-bold text-slate-400 w-4 text-center select-none">{fontSize}</span>
+            <button 
+              onClick={() => setFontSize(f => Math.min(24, f + 1))}
+              className="px-2 py-1 text-[11px] font-extrabold text-slate-500 hover:text-slate-800 transition-colors"
+              title="Increase Font Size"
+            >
+              A+
+            </button>
+          </div>
           
           <button 
             onClick={() => window.print()}
@@ -117,7 +154,7 @@ function App() {
       </nav>
 
       {/* Split View */}
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden print:overflow-visible print:block relative">
         {/* Editor (Hidden in print) */}
         <section className="print:hidden hidden w-1/3 flex-col border-r border-slate-200 relative md:flex z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
           <div className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50/50 p-6">
@@ -165,9 +202,9 @@ function App() {
               <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Scan</label>
               <input 
                 value={scanOverride} 
-                onChange={e => setScanOverride(e.target.value)} 
-                placeholder="Ex: INTRO. V1. C." 
+                onChange={(e) => setScanOverride(e.target.value)}
                 className={shadcnInput}
+                placeholder="e.g. V1. C. V2. C. B. C."
               />
             </div>
           </div>
@@ -180,7 +217,7 @@ function App() {
 
 
         {/* Live Viewer (Expands to full in print) */}
-        <section className="print:w-full print:block flex-1 overflow-y-auto">
+        <section className="print:w-full print:block print:overflow-visible flex-1 overflow-y-auto">
           <Viewer 
             chordProText={text} 
             title={title}
@@ -190,6 +227,8 @@ function App() {
             originalKey={originalKey} 
             targetKey={search.key || originalKey} 
             mode={search.mode || 'standard'} 
+            fontSize={fontSize}
+            onRoadmapChange={handleRoadmapChange}
           />
         </section>
       </div>

@@ -1,7 +1,7 @@
-export type Mode = 'standard' | 'nashville'
+export type Mode = 'standard' | 'nashville' | 'compact'
 
 const KEYS_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-const KEYS_FLAT  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
+const KEYS_FLAT  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'Cb']
 
 // Nashville numerals for the major scale: 1, 2m, 3m, 4, 5, 6m, 7dim
 // For simplicity, we just use I, II, III, IV, V, VI, VII and keep their qualities (m, maj, etc)
