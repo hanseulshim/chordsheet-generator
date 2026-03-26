@@ -90,7 +90,9 @@ export function transposeChord(chord: string, steps: number, mode: Mode = 'stand
     let degree = (newIndex - targetInfo.index) % 12
     if (degree < 0) degree += 12
 
-    return NASHVILLE_ROOTS[degree] + chordQuality
+    // Strip leading minor 'm' — Nashville numerals don't need it (but preserve 'maj', 'min', etc.)
+    const nashvilleQuality = chordQuality.replace(/^m(?!aj|in)/i, '')
+    return NASHVILLE_ROOTS[degree] + nashvilleQuality
   } else {
     const useFlats = FLAT_KEYS.includes(targetKey)
     const newRoot = useFlats ? KEYS_FLAT[newIndex] : KEYS_SHARP[newIndex]

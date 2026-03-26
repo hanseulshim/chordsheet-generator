@@ -51,6 +51,7 @@ function App() {
   const [library, setLibrary] = useState<SavedSong[]>([])
   const [isLibraryOpen, setIsLibraryOpen] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
+  const [isCompact, setIsCompact] = useState(false)
 
   useEffect(() => {
     setLibrary(getLibrary())
@@ -248,11 +249,15 @@ function App() {
             </button>
           </div>
 
-          {/* Compact Action Button */}
+          {/* Compact Toggle Button */}
           <button
-            onClick={() => setText(prev => compactChordPro(prev))}
-            className="ml-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md border border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-400 transition-all"
-            title="Remove duplicate sections (same chords + lyrics)"
+            onClick={() => setIsCompact(c => !c)}
+            className={`ml-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md border transition-all ${
+              isCompact
+                ? 'bg-indigo-600 border-indigo-600 text-white'
+                : 'border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-400'
+            }`}
+            title="Toggle compact view (removes duplicate sections)"
           >
             Compact
           </button>
@@ -351,7 +356,7 @@ function App() {
         {/* Live Viewer (Expands to full in print) */}
         <section className="print:w-full print:block print:overflow-visible flex-1 overflow-y-auto">
           <Viewer 
-            chordProText={text} 
+            chordProText={isCompact ? compactChordPro(text) : text} 
             title={title}
             artist={artist}
             tempo={tempo}

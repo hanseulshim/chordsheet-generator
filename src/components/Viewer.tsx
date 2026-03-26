@@ -56,11 +56,13 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
       interface ParsedBlock {
         reactNode: React.ReactNode;
         pixelHeight: number;
+        isHeader?: boolean;
       }
       
       const blocks: ParsedBlock[] = []
       let currentBlock: React.ReactNode[] = []
       let currentPixelHeight = 0
+      let currentBlockIsHeader = false
       
       const lineHeightTight = fontSize * 1.25 // leading-tight
 
@@ -72,23 +74,25 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
         if (line.trim() === '') {
           // End block
           if (currentBlock.length > 0) {
-            blocks.push({ reactNode: <div key={`block-${lineIndex}`} className="break-inside-avoid">{currentBlock}</div>, pixelHeight: currentPixelHeight })
+            blocks.push({ reactNode: <div key={`block-${lineIndex}`} className="break-inside-avoid">{currentBlock}</div>, pixelHeight: currentPixelHeight, isHeader: currentBlockIsHeader })
             currentBlock = []
             currentPixelHeight = 0
+            currentBlockIsHeader = false
           }
           return
         }
 
         const pureLine = line.replace(/[[\]:]/g, '').trim()
-        const isHeader = pureLine.match(/^(verse|chorus|bridge|intro|outro|interlude|tag|vamp|instrumental)/i) || 
+        const isHeader = pureLine.match(/^(verse|chorus|bridge|intro|outro|pre-chorus|prechorus|interlude|coda|tag|vamp|instrumental|ending|hook|refrain|breakdown|solo)/i) || 
                          (pureLine === pureLine.toUpperCase() && pureLine.length > 2 && pureLine.length < 20 && (!line.includes('[') || (line.trim().startsWith('[') && line.trim().endsWith(']'))))
         
         if (isHeader) {
           if (currentBlock.length > 0) {
-            blocks.push({ reactNode: <div key={`block-${lineIndex}`} className="break-inside-avoid">{currentBlock}</div>, pixelHeight: currentPixelHeight })
+            blocks.push({ reactNode: <div key={`block-${lineIndex}`} className="break-inside-avoid">{currentBlock}</div>, pixelHeight: currentPixelHeight, isHeader: currentBlockIsHeader })
             currentBlock = []
             currentPixelHeight = 0
           }
+          currentBlockIsHeader = true
           
           const isIntro = pureLine.match(/^intro/i)
           const isFirstBlock = blocks.length === 0
@@ -102,11 +106,12 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
         }
 
         if (!line.includes('[')) {
+          currentBlockIsHeader = false
           currentPixelHeight += fontSize * 1.5
           currentBlock.push(<div key={lineIndex} className="min-h-[1rem]">{line}</div>)
           return
         }
-
+        currentBlockIsHeader = false
         const isOnlyChords = !line.replace(/\[[^\]]+\]/g, '').trim()
         const parts = line.split(/(\[[^[\]]+\])/g)
 
@@ -114,10 +119,10 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
 
         // Ignore N.C. (No Chord), Lyrics mode
         if (isOnlyChords && (suppressChords || parts.every(p => !p.startsWith('[') || p.toUpperCase() === '[N.C.]' || p.toUpperCase() === '[NC]'))) return
-        currentPixelHeight += isOnlyChords ? (fontSize * 1.5 + 4) : (fontSize * 1.5 + 20)
+        currentPixelHeight += isOnlyChords ? (fontSize * 1.25 + 8) : (fontSize * 1.25 + 16)
         
         currentBlock.push(
-          <div key={lineIndex} className={`relative flex whitespace-nowrap leading-tight ${isOnlyChords ? 'mt-1 mb-1' : 'mt-4'}`}>
+          <div key={lineIndex} className={`relative flex leading-tight ${isOnlyChords ? 'mt-1 mb-1' : 'mt-4 whitespace-nowrap'}`} style={isOnlyChords ? { gap: '0.6rem' } : undefined}>
             {parts.map((part, i) => {
               if (part.startsWith('[') && part.endsWith(']')) {
                 if (suppressChords) return null
@@ -128,7 +133,7 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
                 
                 if (isOnlyChords) {
                   return (
-                    <span key={i} className="font-bold text-indigo-600 print:text-black inline-block pr-1">
+                    <span key={i} className="font-bold text-indigo-600 print:text-black">
                       {chord}
                     </span>
                   )
@@ -141,6 +146,8 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
                   </span>
                 )
               }
+              // For chord-only lines, skip whitespace-only text between brackets
+              if (isOnlyChords && !part.trim()) return null
               return <span key={i} className="whitespace-pre">{part}</span>
             })}
           </div>
@@ -148,7 +155,7 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
       })
 
       if (currentBlock.length > 0) {
-        blocks.push({ reactNode: <div key="block-last" className="break-inside-avoid">{currentBlock}</div>, pixelHeight: currentPixelHeight })
+        blocks.push({ reactNode: <div key="block-last" className="break-inside-avoid">{currentBlock}</div>, pixelHeight: currentPixelHeight, isHeader: currentBlockIsHeader })
       }
 
       // Pagination Matrix: Pages[Page][Column][Block]
@@ -157,14 +164,20 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
       let currentCol = 0
       let currentHeight = 0
 
-      blocks.forEach(block => {
+      blocks.forEach((block, blockIndex) => {
         const isFirstPage = layoutPages.length === 0
         // Calculate max pixel height visually available for actual columns layout
         // 1100 total - 56px (pt-4, pb-10) - ~90px (header + space) = 954. Use 940 for safety.
         // Page 2+: 1100 - 56 = 1044. Use 1030 for safety.
         const maxAvailable = isFirstPage ? 940 : 1030
 
-        if (currentHeight + block.pixelHeight > maxAvailable && currentHeight > 0) {
+        const nextBlock = blocks[blockIndex + 1]
+        // Don't orphan a section header at the bottom of a column without its content
+        const wouldOrphanHeader = block.isHeader && nextBlock &&
+          currentHeight > 0 &&
+          currentHeight + block.pixelHeight + nextBlock.pixelHeight > maxAvailable
+
+        if ((currentHeight + block.pixelHeight > maxAvailable && currentHeight > 0) || wouldOrphanHeader) {
           currentCol++
           currentHeight = 0
           if (currentCol > 1) {
@@ -215,8 +228,8 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
                   <span>Artist: <span className="text-slate-700 print:text-black font-medium">{artist || 'Unknown'}</span></span>
                   <span className="text-slate-300 mx-1 print:hidden">•</span>
                   <span>Key: <span className="text-slate-700 print:text-black font-medium">{targetKey || originalKey}</span></span>
-                  <span className="text-slate-300 mx-1 print:hidden">•</span>
-                  <span>Tempo: <span className="text-slate-700 print:text-black font-medium">{tempo || '--'}</span></span>
+                  {tempo && <><span className="text-slate-300 mx-1 print:hidden">•</span>
+                  <span>Tempo: <span className="text-slate-700 print:text-black font-medium">{tempo}</span></span></>}
                 </div>
                 {(customScan || (roadmap && roadmap.length > 0)) && (
                   <p className="mt-2 font-bold tracking-widest text-slate-400 print:text-black uppercase">
@@ -229,7 +242,7 @@ export function Viewer({ chordProText, title, artist, tempo, originalKey, target
             {/* Content Block */}
             <div className="flex-1 flex gap-8 text-left min-h-0 w-full h-full">
               <div className="flex-1 flex flex-col min-h-0">{page[0]}</div>
-              <div className="flex-1 flex flex-col min-h-0">{page[1]}</div>
+              {page[1].length > 0 && <div className="flex-1 flex flex-col min-h-0">{page[1]}</div>}
             </div>
           </div>
         </div>

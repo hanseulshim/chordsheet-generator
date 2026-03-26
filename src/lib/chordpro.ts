@@ -1,6 +1,6 @@
 // Define block markers
 export const SECTION_MARKERS = [
-  'verse', 'chorus', 'bridge', 'intro', 'outro', 'pre-chorus', 'interlude', 'coda'
+  'verse', 'chorus', 'bridge', 'intro', 'outro', 'pre-chorus', 'prechorus', 'interlude', 'coda', 'tag', 'vamp', 'instrumental', 'ending', 'hook', 'refrain', 'breakdown', 'solo'
 ]
 
 export interface RoadmapItem {
@@ -99,9 +99,14 @@ export function abbreviateScanLabel(label: string): string {
   if (upper.startsWith('INTRO')) return 'INTRO'
   if (upper.startsWith('OUTRO')) return 'OUT'
   if (upper.startsWith('INSTRUMENTAL')) return 'INST'
-  if (upper.startsWith('INTERLUDE')) return 'INT'
+  if (upper.startsWith('INTERLUDE')) return 'INTL'
   if (upper.startsWith('VAMP')) return 'VAMP'
   if (upper.startsWith('TAG')) return 'TAG'
   if (upper.startsWith('ENDING')) return 'END'
+  if (upper.startsWith('CODA')) return 'CODA'
+  if (upper.startsWith('HOOK')) return 'HOOK'
+  if (upper.startsWith('REFRAIN')) return 'REF'
+  if (upper.startsWith('BREAKDOWN')) return 'BRK'
+  if (upper.startsWith('SOLO')) return 'SOLO'
   return upper
 }
